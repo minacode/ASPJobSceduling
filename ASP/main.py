@@ -31,8 +31,9 @@ file.close()
 f = open('mysolution.lp', 'w')
 
 f.write('operation(pseudo).\n'
-        'starts(pseudo, m0, 0).\n'
-        'lasts(pseudo, 0).\n\n')
+        'lasts(pseudo, 0).\n'
+        'runson(pseudo, m0).\n'
+        'starts(pseudo, m0, 0).\n\n')
 
 max_sum = 0
 for operation in operations:
@@ -49,18 +50,15 @@ for machine in machines:
     f.write('machine(' + machine + ').\n')
 f.write('\n')
 
-f.write('%' + str(len(operations)) + '{starts(O, M, T) : operation(O), machine(M), T = 1..' + str(max_sum) + '}'+ str(len(operations)) +'.\n'
-        '%:- #count {J : starts(J, _, _)} != ' + str(len(operations)) + ', operation(J).\n'
-        '%:- starts(J1, _, _), starts(J2, _, _), J1 = J2.\n'
-        '' + str(len(operations)) + '{starts(J, M, T) : '
-        'dependson(J, A), endsbefore(J, A), runson(J, M), isfree(M, T), operation(J), operation(A), machine(M)}'+ str(len(operations)) + '.\n'
-        'endsbefore(J, A)     :- starts(J, _, Z), endsat(A, T), Z < T, operation(J), operation(A).\n'
-        'isfree(M, T + W + 1) :- starts(J, M, T), lasts(J, W), operation(J), machine(M).\n'
-        '%isfree(M, T + 1)    :- not starts(_ , M, T+1), isfree(M, T).\n'
-        'endsat(J, T + W)     :- starts(J, _, T), lasts(J, W), operation(J).\n'
-        'max(S)               :- S = #max { T : endsat(_, T) }.\n'
-        '%#minimize { V : max(V) }.\n'
-        '%#show starts/3.'
+f.write('' + str(len(operations) ) + '' 
+        '{starts(J, M, T) : '
+        'dependson(J, A), endsat(A, Z), Z < T, runson(J, M), not collide(J, A), operation(J), operation(A), isstarttime(T), machine(M)}'+ str(len(operations) ) + '.\n'
+        'collide(J, A) :- starts(J, M, TA), endsat(J, TE), runson(A, M), endsat(A, ZE), TA <= ZE, ZE <= TE.\n'
+        'endsat(J, T + W - 1) :- starts(J, _, T), lasts(J, W).\n'
+        'isstarttime(T + 1) :- endsat(_, T), T < ' + str(max_sum) + '.\n'
+        'max(S) :- S = #max { T : endsat(_, T) }.\n'
+        '#minimize { V : max(V) }.\n'
+        #'#show starts/3.'
        )
 
 f.close()

@@ -1,6 +1,7 @@
 operation(pseudo).
-starts(pseudo, m0, 0).
 lasts(pseudo, 0).
+runson(pseudo, m0).
+starts(pseudo, m0, 0).
 
 operation(j0o0).
 dependson(j0o0, pseudo).
@@ -14,14 +15,9 @@ runson(j0o1, m0).
 
 machine(m0).
 
-%2{starts(O, M, T) : operation(O), machine(M), T = 1..2}2.
-%:- #count {J : starts(J, _, _)} != 2, operation(J).
-%:- starts(J1, _, _), starts(J2, _, _), J1 = J2.
-2{starts(J, M, T) : dependson(J, A), endsbefore(J, A), runson(J, M), isfree(M, T), operation(J), operation(A), machine(M)}2.
-endsbefore(J, A)     :- starts(J, _, Z), endsat(A, T), Z < T, operation(J), operation(A).
-isfree(M, T + W + 1) :- starts(J, M, T), lasts(J, W), operation(J), machine(M).
-%isfree(M, T + 1)    :- not starts(_ , M, T+1), isfree(M, T).
-endsat(J, T + W)     :- starts(J, _, T), lasts(J, W), operation(J).
-max(S)               :- S = #max { T : endsat(_, T) }.
-%#minimize { V : max(V) }.
-%#show starts/3.
+1{starts(J, M, T) : dependson(J, A), endsat(A, Z), Z < T, runson(J, M), not collide(J, A), operation(J), operation(A), isstarttime(T), machine(M)}.
+collide(J, A) :- starts(J, M, TA), endsat(J, TE), runson(A, M), endsat(A, ZE), TA <= ZE, ZE <= TE.
+endsat(J, T + W - 1) :- starts(J, _, T), lasts(J, W).
+isstarttime(T + 1) :- endsat(_, T), T < 2.
+max(S) :- S = #max { T : endsat(_, T) }.
+#minimize { V : max(V) }.
