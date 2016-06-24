@@ -17,9 +17,10 @@ file_name = input('file: ')
 file = open(file_name + '.txt', 'r')
 lines = file.readlines()
 counts = lines[0].split()
+machine_count = int(counts[0])
+operation_count = int(counts[0])
 del lines[0]
 operations = []
-machine_count = len(lines)
 machines = []
 for i in range(machine_count):
     machines.append("m"+ str(i))
@@ -50,17 +51,18 @@ for machine in machines:
     f.write('machine(' + machine + ').\n')
 f.write('\n')
 
-f.write('' + str(len(operations) ) + '' 
-        '{starts(J, M, T) : '
-        'dependson(J, A), endsat(A, Z), Z < T, runson(J, M), not collide(J, A), operation(J), operation(A), isstarttime(T), machine(M)}'+ str(len(operations) ) + '.\n'
-        'collide(J, A) :- starts(J, M, TA), endsat(J, TE), runson(A, M), endsat(A, ZE), TA <= ZE, ZE <= TE.\n'
+f.write('' + str(len(operations) +1 ) + '' 
+        '{starts(J, M, T) : runson(J, M), operation(J), isstarttime(T), machine(M)}' + str(len(operations) +1 ) + '.\n'
+        ':- dependson(J, A), starts(J, _, T), endsat(A, Z), Z >= T.\n'
+        ':- starts(J, M, TA), endsat(J, TE), runson(A, M), endsat(A, ZE), TA <= ZE, ZE <= TE, J != A.\n'
+        ':- starts(J, _, T), starts(J, _, Z), Z != T.\n'
         'endsat(J, T + W - 1) :- starts(J, _, T), lasts(J, W).\n'
         'isstarttime(T + 1) :- endsat(_, T), T < ' + str(max_sum) + '.\n'
         'max(S) :- S = #max { T : endsat(_, T) }.\n'
         '#minimize { V : max(V) }.\n'
-        #'#show starts/3.'
+        '#show starts/3.'
        )
 
 f.close()
 
-os.system('clingo 0 mysolution.lp')
+os.system('clingo mysolution.lp')
