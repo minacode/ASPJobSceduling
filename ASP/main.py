@@ -34,7 +34,7 @@ f = open('mysolution.lp', 'w')
 f.write('operation(pseudo).\n'
         'lasts(pseudo, 0).\n'
         'runson(pseudo, m0).\n'
-        'starts(pseudo, m0, 0).\n\n')
+        'starts(pseudo, 0).\n\n')
 
 max_sum = 0
 for operation in operations:
@@ -52,15 +52,15 @@ for machine in machines:
 f.write('\n')
 
 f.write('' + str(len(operations) +1 ) + '' 
-        '{starts(J, M, T) : runson(J, M), operation(J), isstarttime(T), machine(M)}' + str(len(operations) +1 ) + '.\n'
-        ':- dependson(J, A), starts(J, _, T), endsat(A, Z), Z >= T.\n'
-        ':- starts(J, M, TA), endsat(J, TE), runson(A, M), endsat(A, ZE), TA <= ZE, ZE <= TE, J != A.\n'
-        ':- starts(J, _, T), starts(J, _, Z), Z != T.\n'
-        'endsat(J, T + W - 1) :- starts(J, _, T), lasts(J, W).\n'
+        '{starts(J, T) : operation(J), isstarttime(T)}' + str(len(operations) +1 ) + '.\n'
+        ':- dependson(J, A), starts(J, T), endsat(A, Z), Z >= T.\n'
+        ':- starts(J, TA), endsat(J, TE), runson(J, M), runson(A, M), endsat(A, ZE), TA <= ZE, ZE <= TE, J != A.\n'
+        ':- starts(J, T), starts(J, Z), Z != T.\n'
+        'endsat(J, T + W - 1) :- starts(J, T), lasts(J, W).\n'
         'isstarttime(T + 1) :- endsat(_, T), T < ' + str(max_sum) + '.\n'
         'max(S) :- S = #max { T : endsat(_, T) }.\n'
         '#minimize { V : max(V) }.\n'
-        '#show starts/3.'
+        '#show starts/2.'
        )
 
 f.close()
