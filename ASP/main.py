@@ -18,7 +18,7 @@ file = open(file_name + '.txt', 'r')
 lines = file.readlines()
 counts = lines[0].split()
 machine_count = int(counts[0])
-operation_count = int(counts[0])
+job_count = int(counts[1])
 del lines[0]
 operations = []
 machines = []

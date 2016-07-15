@@ -18,7 +18,7 @@ file = open(file_name + '.txt', 'r')
 lines = file.readlines()
 counts = lines[0].split()
 machine_count = int(counts[0])
-job_count = int(counts[0])
+job_count = int(counts[1])
 operation_count = machine_count * job_count
 del lines[0]
 operations = []
@@ -60,4 +60,4 @@ f.write('' + str(operation_count + 1) + ''
 
 f.close()
 
-os.system('clingo easysolution.lp --solve-limit=100000 -n 10 -t 3')
+os.system('clingo easysolution.lp --solve-limit=50000 -n 10 -t 4')
