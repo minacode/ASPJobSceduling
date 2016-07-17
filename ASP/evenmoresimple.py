@@ -49,7 +49,7 @@ def parse_solver_output(output, operations):
     
     # keep all solutions
     i = 0
-    while solver_lines[i] != 'OPTIMUM FOUND':
+    while not solver_lines[i] in ('OPTIMUM FOUND', 'SATISFIABLE'):
         i += 1
     
     # delete lines after solutions
@@ -73,6 +73,11 @@ def parse_solver_output(output, operations):
     
     return operations 
 
+def find_operation(operations, job, rank):
+    for operation in operations:
+        if operation.job == job and operation.rank == rank:
+            return operation
+
 # this function does compress the starting times of the operations
 # it does only work, if the operations are sorted by their names
 # which is the same as if they were sorted by jobs and dependencies
@@ -81,86 +86,100 @@ def compress(operations):
     # sort operations by their start time
     sorted_operations = sorted(operations, key = lambda o: o.start_time)
     machine_end_times = {}
-    
-    print('sorted:')
-    for o in sorted_operations:
-        print(o.start_time, o.job, o.rank)
-    
     for i in range(len(operations)):
         machine    = sorted_operations[i].machine
+        job        = sorted_operations[i].job
         rank       = sorted_operations[i].rank
+        cost       = sorted_operations[i].cost
         start_time = sorted_operations[i].start_time
-        print(machine_end_times)
         if rank == 0:
             if machine in machine_end_times.keys():
                 start_time = machine_end_times[machine]
             else:
                 start_time = 0
         else:
-            dependency = operations[i-1]
+            dependency = find_operation(operations, job, rank -1)
             start_time = dependency.start_time + dependency.cost
             if machine in machine_end_times.keys() and start_time < machine_end_times[machine]:
                 start_time = machine_end_times[machine]
         sorted_operations[i].start_time = start_time
-        end_time = start_time + operation.cost
+        end_time = start_time + cost
         machine_end_times.update({ machine : end_time })
     return sorted_operations
 
- 
-output_file_name = 'evenmoresimplersolution.lp'
-file_name = input('file: ')
-with open(file_name + '.txt', 'r') as file:
-    lines = file.readlines()
-    counts = lines[0].split()
-    machine_count = int(counts[0])
-    job_count = int(counts[1])
-    operation_count = machine_count * job_count
-    del lines[0]
-    operations = []
-    max_operation_count = 0
-    tick_intervall = 0 
-    for i in range(len(lines)):
-        line = lines[i].split()
-        op_count = len(line) // 2
-        if op_count > max_operation_count:
-            max_operation_count = op_count
-        for j in range(0, len(line), 2):
-            cost = int(line[j+1])
-            if tick_intervall < cost:
-                tick_intervall = cost
-            operations.append(Operation(job = i, 
-                                        machine = 'm' + line[j], 
-                                        cost = int(line[j+1]), 
-                                        rank = j // 2
-                              ))
-
-with open(output_file_name, 'w') as file:
-    file.write('runson(pseudo, m0).\n'
-            'starts(pseudo, -1).\n\n')
-    
-    operation_counts = [0] * max_operation_count
+def show_output(operations):
+    print('Job       Operation Startzeit')
+    max_time = 0
     for operation in operations:
-        operation_counts[operation.rank] += 1
-        file.write('operation' + str(operation.rank) + '(' + operation.get_name() + ').\n')
-        if operation.rank == 0:
-            file.write('dependson(' + operation.get_name() + ', pseudo).\n')
-        else:
-            file.write('dependson(' + operation.get_name() + ', ' + operation.get_dependency() + ').\n')
-        file.write('runson(' + operation.get_name() + ', ' + operation.machine + ').\n\n')
+        end_time = operation.start_time + operation.cost
+        if end_time > max_time:
+            max_time = end_time
+        s_start_time = str(operation.start_time)
+        s_job        = str(operation.job)
+        s_rank       = str(operation.rank)
+        line = s_job
+        line += ' ' * (10 - len(s_job))
+        line += s_rank
+        line += ' ' * (10 - len(s_rank))
+        line += s_start_time
+        print(line)
+    print('Gesamtlaufzeit: ' + str(max_time))
+
+if __name__ == '__main__':
+    output_file_name = 'evenmoresimplersolution.lp'
+    file_name = input('file: ')
+    with open(file_name + '.txt', 'r') as file:
+        lines = file.readlines()
+        counts = lines[0].split()
+        machine_count = int(counts[0])
+        job_count = int(counts[1])
+        operation_count = machine_count * job_count
+        del lines[0]
+        operations = []
+        max_operation_count = 0
+        tick_intervall = 0 
+        for i in range(len(lines)):
+            line = lines[i].split()
+            op_count = len(line) // 2
+            if op_count > max_operation_count:
+                max_operation_count = op_count
+            for j in range(0, len(line), 2):
+                cost = int(line[j+1])
+                if tick_intervall < cost:
+                    tick_intervall = cost
+                operations.append(Operation(job = i, 
+                                            machine = 'm' + line[j], 
+                                            cost = int(line[j+1]), 
+                                            rank = j // 2
+                                  ))
     
-    for i in range(len(operation_counts)):
-        file.write('' + str(operation_counts[i]) + ''
-                '{starts(J, T) : operation' + str(i) + '(J), T = ' + get_time_intervall(i, job_count) + '}'
-                '' + str(operation_counts[i]) + '.\n'
-               )
-    
-    file.write(':- dependson(J, A), starts(J, T), starts(A, Z), T <= Z.\n'
-            ':- starts(J, T), starts(A, Z), runson(J, M), runson(A, M), T = Z, J != A.\n'
-            ':- starts(J, T), starts(J, Z), Z != T.\n'
-            'max(S + 1) :- S = #max { T : starts(_, T)}.\n'
-            '#minimize { T : max(T) }.\n'
-            '#show starts/2.'
-           )
+    with open(output_file_name, 'w') as file:
+        file.write('runson(pseudo, m0).\n'
+                'starts(pseudo, -1).\n\n')
+        
+        operation_counts = [0] * max_operation_count
+        for operation in operations:
+            operation_counts[operation.rank] += 1
+            file.write('operation' + str(operation.rank) + '(' + operation.get_name() + ').\n')
+            if operation.rank == 0:
+                file.write('dependson(' + operation.get_name() + ', pseudo).\n')
+            else:
+                file.write('dependson(' + operation.get_name() + ', ' + operation.get_dependency() + ').\n')
+            file.write('runson(' + operation.get_name() + ', ' + operation.machine + ').\n\n')
+        
+        for i in range(len(operation_counts)):
+            file.write('' + str(operation_counts[i]) + ''
+                    '{starts(J, T) : operation' + str(i) + '(J), T = ' + get_time_intervall(i, job_count) + '}'
+                    '' + str(operation_counts[i]) + '.\n'
+                   )
+        
+        file.write(':- dependson(J, A), starts(J, T), starts(A, Z), T <= Z.\n'
+                   ':- starts(J, T), starts(A, Z), runson(J, M), runson(A, M), T = Z, J != A.\n'
+                   ':- starts(J, T), starts(J, Z), Z != T.\n'
+                   'max(S + 1) :- S = #max { T : starts(_, T)}.\n'
+                   '#minimize { T : max(T) }.\n'
+                   '#show starts/2.'
+                  )
 
 # create subprocess definition
 process = ['clingo', output_file_name, '--solve-limit=100000', '-n 10', '-t 4']
@@ -171,13 +190,8 @@ completed_process = subprocess.run(process, universal_newlines = True, stdout = 
 # update operations based on solver output
 operations = parse_solver_output(completed_process.stdout, operations)
 
-print('---------------')
-for operation in operations:
-    print(operation.start_time, operation.job, operation.rank)
-print('----------------')
-
 operations = compress(operations)
 
-print('---------------')
-for operation in operations:
-    print(operation.start_time, operation.job, operation.rank)
+operations.sort(key = lambda o: [o.job, o.rank])
+
+show_output(operations)
